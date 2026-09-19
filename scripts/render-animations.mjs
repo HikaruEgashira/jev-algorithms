@@ -167,91 +167,82 @@ async function renderSort() {
 			node.high = [];
 			node.low = [];
 			g.others.forEach((id, j) => (g.decisions[j] ? node.high : node.low).push(id));
-			const children = [node.high, node.low]
-				.filter((list) => list.length > 0)
-				.map((list) => ({ ids: list, level: node.level + 1 }));
+			node.highNode = node.high.length ? { ids: node.high, level: node.level + 1 } : null;
+			node.lowNode = node.low.length ? { ids: node.low, level: node.level + 1 } : null;
+			const children = [node.highNode, node.lowNode].filter(Boolean);
 			(byLevel[node.level + 1] ??= []).push(...children);
 			next.push(...children);
 		}
 		frontier = next;
 	}
 
-	const chipW = 30;
-	const chipGap = 7;
-	const groupGap = 26;
-	const boxH = 64;
-	const top = 128;
-	const bottom = H - 70;
-	const rowY = (level) =>
-		byLevel.length > 1 ? top + ((bottom - top) * level) / (byLevel.length - 1) : top;
-
-	const chipsOf = (node, colorSplit) => {
-		if (node.ids.length <= 1) return [{ id: node.ids[0], kind: "normal" }];
-		if (node.pivot === undefined) return node.ids.map((id) => ({ id, kind: "top" }));
-		const side = new Map();
-		node.high.forEach((id) => side.set(id, "good"));
-		node.low.forEach((id) => side.set(id, "bad"));
-		return [node.high, [node.pivot], node.low].flat().map((id) => ({
-			id,
-			kind: id === node.pivot ? "pivot" : colorSplit ? side.get(id) : "normal",
-		}));
+	const maxLevel = byLevel.length - 1;
+	const inOrder = (node, depth) => {
+		if (!node || node.level > depth) return node ? node.ids : [];
+		if (node.pivot === undefined) return node.ids;
+		return [...inOrder(node.highNode, depth), node.pivot, ...inOrder(node.lowNode, depth)];
 	};
+	const placedBefore = (depth) =>
+		new Set(byLevel.slice(0, depth).flat().filter((n) => n.pivot !== undefined).map((n) => n.pivot));
 
-	function drawLevel(nodes, y, colorSplit) {
-		const chips = nodes.map((n) => chipsOf(n, colorSplit));
-		const boxW = (c) => c.length * chipW + (c.length - 1) * chipGap + 16;
-		const total = chips.reduce((s, c) => s + boxW(c), 0) + groupGap * (nodes.length - 1);
-		let x = (W - total) / 2;
+	const barGap = 16;
+	const barW = Math.min(64, (W - 96 - (ids.length - 1) * barGap) / ids.length);
+	const baseX = (W - (ids.length * barW + (ids.length - 1) * barGap)) / 2;
+	const baseline = 360;
+	const barH = (id) => Math.max(16, (values[id] / max) * 220);
+	const xOf = (order, id) => baseX + order.indexOf(id) * (barW + barGap) + barW / 2;
+
+	function drawBars(order, roleOf, arcs = []) {
 		const out = [];
-		nodes.forEach((node, ni) => {
-			const c = chips[ni];
-			const w = boxW(c);
-			out.push(rect(x, y - boxH + 14, w, boxH, { fill: C.bg, stroke: colorSplit ? C.accentDeep : C.line, rx: 8 }));
-			const pivotIdx = c.findIndex((ch) => ch.kind === "pivot");
-			c.forEach((chip, ci) => {
-				const [fill, stroke] = KIND[chip.kind] ?? KIND.normal;
-				const cx = x + 8 + ci * (chipW + chipGap);
-				const h = 20 + (values[chip.id] / max) * 26;
-				out.push(rect(cx, y + 14 - h, chipW, h, { fill, stroke, rx: 4 }));
-				out.push(text(cx + chipW / 2, y + 26, values[chip.id], { size: 12, weight: 600 }));
-				if (!colorSplit && pivotIdx >= 0 && ci !== pivotIdx) {
-					const px = x + 8 + pivotIdx * (chipW + chipGap) + chipW / 2;
-					out.push(line(px, y - boxH + 6, cx + chipW / 2, y - boxH + 6, { stroke: C.accentDeep }));
-				}
-			});
-			x += w + groupGap;
+		order.forEach((id, i) => {
+			const [fill, stroke] = KIND[roleOf(id)] ?? KIND.normal;
+			const h = barH(id);
+			const x = baseX + i * (barW + barGap);
+			out.push(rect(x, baseline - h, barW, h, { fill, stroke, rx: 5 }));
+			out.push(text(x + barW / 2, baseline + 20, values[id], { size: 13, weight: 600 }));
 		});
+		for (const [a, b] of arcs) {
+			out.push(line(xOf(order, a), baseline - barH(a) - 12, xOf(order, b), baseline - barH(b) - 12, { stroke: C.amber, width: 2, opacity: 0.85 }));
+		}
 		return out.join("");
 	}
 
 	const steps = [];
-	for (let level = 0; level < byLevel.length - 1; level++) {
-		const nodes = byLevel[level];
-		if (nodes.every((n) => n.ids.length <= 1)) continue;
-		const above = byLevel.slice(0, level).map((ns, i) => drawLevel(ns, rowY(i), true)).join("");
+	for (let level = 0; level < calls.length; level++) {
+		const nodes = byLevel[level] ?? [];
+		const pivots = new Set(nodes.filter((n) => n.pivot !== undefined).map((n) => n.pivot));
+		const placed = placedBefore(level);
+		const arcs = [];
+		for (const node of nodes) {
+			if (node.pivot === undefined) continue;
+			for (const id of [...node.high, ...node.low]) arcs.push([node.pivot, id]);
+		}
 		steps.push({
 			svg: svgFrame(
 				"sortByPairwise",
-				`level ${level + 1}: 1 request — ${calls[level].pairs.length} comparisons against ${nodes.filter((n) => n.ids.length > 1).length} pivot(s)`,
-				above +
-					drawLevel(nodes, rowY(level), false) +
-					legend(H - 26, [[C.accent, "pivot"], [C.good, "higher"], [C.bad, "lower"]]),
+				`level ${level + 1}: 1 request — ${calls[level].pairs.length} pairwise comparisons`,
+				drawBars(inOrder(root, level - 1), (id) => (pivots.has(id) ? "pivot" : placed.has(id) ? "good" : "normal"), arcs) +
+					legend(H - 26, [[C.accent, "pivot"], [C.amber, "compared"], [C.good, "in place"]]),
 			),
-			hold: 5,
+			hold: 6,
 		});
+		const after = placedBefore(level + 1);
 		steps.push({
-			svg: svgFrame("sortByPairwise", "split into higher / lower groups", byLevel.slice(0, level + 1).map((ns, i) => drawLevel(ns, rowY(i), true)).join("")),
-			hold: 3,
+			svg: svgFrame(
+				"sortByPairwise",
+				"each pivot lands in its sorted slot",
+				drawBars(inOrder(root, level), (id) => (after.has(id) ? "good" : "normal")),
+			),
+			hold: 4,
 		});
 	}
 	steps.push({
 		svg: svgFrame(
 			"sortByPairwise",
-			`${ordered.length} items ordered in ${calls.length} requests (n log n comparisons batched by level)`,
-			drawLevel([{ ids: ordered.map((i) => i.id), level: 0, pivot: undefined }], rowY(byLevel.length - 1), true) +
-				legend(H - 26, [[C.accent, "sorted"]]),
+			`${ordered.length} items ordered in ${calls.length} requests`,
+			drawBars(inOrder(root, maxLevel), () => "good") + legend(H - 26, [[C.good, "sorted"]]),
 		),
-		hold: 8,
+		hold: 10,
 	});
 	return steps;
 }
