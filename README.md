@@ -1,19 +1,9 @@
 # jev-algorithms
 
-Runtime-agnostic algorithms built on TypeSafe's [Jev](https://developers.cloudflare.com/ai/models/typesafe/jev/)
-structured-evaluation model.
-
-Jev does not generate prose. You hand it one `state` and a map of typed
-questions, and it returns one answer per question: a probability for Noul, a
-picked option for Choice, a position on a scale for Score. That is a tiny
-primitive. This package turns it into the algorithms you actually want —
-sorting, top-k, threshold search, ranking, clustering, classification, and
-matching — and keeps the number of Jev calls small by batching many questions
-into one request.
-
-The package depends on nothing. Bring a `JevClient`; adapters ship for the
-TypeSafe HTTP API and for a Cloudflare Workers AI binding, plus an in-memory
-double for tests.
+![sortByPairwise](docs/animations/sort-by-pairwise.gif)
+![selectTopK](docs/animations/select-top-k.gif)
+![findFirstTrue](docs/animations/find-first-true.gif)
+![clusterByRelation](docs/animations/cluster-by-relation.gif)
 
 ## Install
 
@@ -44,33 +34,6 @@ const ordered = await sortByPairwise(jev, inbox, {
 });
 // [Contract mail, Weekly digest]
 ```
-
-## Animations
-
-Each clip is generated from the real algorithm: the code in `dist` is run
-against a deterministic oracle, every comparator call is recorded, and the
-recording is replayed as frames (`npm run animations`). The request counts in
-the captions are the counts the library actually made.
-
-**sortByPairwise** — quicksort partitioned one level per request; each level
-compares every active group against its pivot in a single Jev call.
-
-![sortByPairwise](docs/animations/sort-by-pairwise.gif)
-
-**selectTopK** — quickselect descends only the side that can still hold the
-k-th item.
-
-![selectTopK](docs/animations/select-top-k.gif)
-
-**findFirstTrue** — binary search narrows a monotone predicate in `O(log n)`
-requests.
-
-![findFirstTrue](docs/animations/find-first-true.gif)
-
-**clusterByRelation** — union-find over pairwise equivalence; all pairs in one
-request.
-
-![clusterByRelation](docs/animations/cluster-by-relation.gif)
 
 ## The client contract
 
