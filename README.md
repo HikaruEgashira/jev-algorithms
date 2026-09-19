@@ -1,5 +1,7 @@
 # jev-algorithms
 
+## Gallery
+
 ![sortByPairwise](docs/animations/sort-by-pairwise.gif)
 ![selectTopK](docs/animations/select-top-k.gif)
 ![findFirstTrue](docs/animations/find-first-true.gif)
