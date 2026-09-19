@@ -1,0 +1,20 @@
+{
+	"$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+	"testRunner": "command",
+	"commandRunner": {
+		"command": "node --test"
+	},
+	"mutate": ["dist/**/*.js", "!dist/index.js"],
+	"mutator": {
+		"excludedMutations": ["StringLiteral"]
+	},
+	"coverageAnalysis": "off",
+	"reporters": ["clear-text", "progress", "json"],
+	"jsonReporter": { "fileName": "reports/mutation.json" },
+	"thresholds": {
+		"high": 90,
+		"low": 80,
+		"break": 80
+	},
+	"tempDirName": ".stryker-tmp"
+}
