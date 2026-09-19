@@ -45,6 +45,33 @@ const ordered = await sortByPairwise(jev, inbox, {
 // [Contract mail, Weekly digest]
 ```
 
+## Animations
+
+Each clip is generated from the real algorithm: the code in `dist` is run
+against a deterministic oracle, every comparator call is recorded, and the
+recording is replayed as frames (`npm run animations`). The request counts in
+the captions are the counts the library actually made.
+
+**sortByPairwise** — quicksort partitioned one level per request; each level
+compares every active group against its pivot in a single Jev call.
+
+![sortByPairwise](docs/animations/sort-by-pairwise.gif)
+
+**selectTopK** — quickselect descends only the side that can still hold the
+k-th item.
+
+![selectTopK](docs/animations/select-top-k.gif)
+
+**findFirstTrue** — binary search narrows a monotone predicate in `O(log n)`
+requests.
+
+![findFirstTrue](docs/animations/find-first-true.gif)
+
+**clusterByRelation** — union-find over pairwise equivalence; all pairs in one
+request.
+
+![clusterByRelation](docs/animations/cluster-by-relation.gif)
+
 ## The client contract
 
 ```ts

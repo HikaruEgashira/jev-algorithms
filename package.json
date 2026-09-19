@@ -33,6 +33,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "npm run build && node --test",
 		"mutation": "npm run build && stryker run",
+		"animations": "npm run build && node scripts/render-animations.mjs",
 		"prepublishOnly": "npm test"
 	},
 	"devDependencies": {
