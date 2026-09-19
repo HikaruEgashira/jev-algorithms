@@ -1,0 +1,146 @@
+{
+  "inbox": {
+    "order": [
+      "決済エラーが発生",
+      "本番CPU使用率95%",
+      "契約書レビュー依頼",
+      "未払いのお知らせ（期限超過）",
+      "ビルド失敗 #4212",
+      "ランチ行きませんか",
+      "健康診断の案内",
+      "週次ダイジェスト"
+    ],
+    "requests": 3,
+    "comparisons": 14,
+    "totalMs": 1090,
+    "medianMs": 302,
+    "p95Ms": 548,
+    "inputTokens": 3167,
+    "outputTokens": 250,
+    "usd": 0.000133014
+  },
+  "scaling": [
+    {
+      "n": 8,
+      "requests": 4.3,
+      "comparisons": 17,
+      "totalMs": 992,
+      "medianMs": 229,
+      "p95Ms": 265,
+      "inputTokens": 3422,
+      "outputTokens": 301,
+      "usd": 0.00014372400000000002,
+      "runs": 3
+    },
+    {
+      "n": 16,
+      "requests": 6,
+      "comparisons": 51,
+      "totalMs": 1435,
+      "medianMs": 229,
+      "p95Ms": 309,
+      "inputTokens": 8439,
+      "outputTokens": 906,
+      "usd": 0.00035443800000000005,
+      "runs": 3
+    },
+    {
+      "n": 32,
+      "requests": 7.3,
+      "comparisons": 133,
+      "totalMs": 1787,
+      "medianMs": 246,
+      "p95Ms": 295,
+      "inputTokens": 19747,
+      "outputTokens": 2356,
+      "usd": 0.000829388,
+      "runs": 3
+    },
+    {
+      "n": 64,
+      "requests": 13.7,
+      "comparisons": 331,
+      "totalMs": 3283,
+      "medianMs": 240,
+      "p95Ms": 288,
+      "inputTokens": 48081,
+      "outputTokens": 5882,
+      "usd": 0.0020194020000000004,
+      "runs": 3
+    }
+  ],
+  "pokemon": {
+    "jevCycles": 5,
+    "jevCycleSample": [
+      "Fire > Grass > Water > Fire",
+      "Fire > Rock > Water > Fire",
+      "Fire > Rock > Electric > Fire"
+    ],
+    "chartCycles": [
+      "Fire > Grass > Water > Fire",
+      "Fire > Grass > Ground > Fire",
+      "Fire > Grass > Rock > Fire",
+      "Water > Ground > Electric > Water",
+      "Grass > Electric > Flying > Grass",
+      "Grass > Rock > Flying > Grass",
+      "Electric > Flying > Ground > Electric",
+      "Ground > Rock > Flying > Ground",
+      "Flying > Fighting > Rock > Flying"
+    ],
+    "orders": [
+      "Fighting > Flying > Ground > Electric > Water > Fire > Rock > Grass",
+      "Fighting > Rock > Flying > Ground > Electric > Fire > Grass > Water",
+      "Fighting > Rock > Flying > Ground > Electric > Fire > Grass > Water"
+    ],
+    "distinctOrders": 2,
+    "requests": 1,
+    "comparisons": 28,
+    "totalMs": 265,
+    "medianMs": 265,
+    "p95Ms": 265,
+    "inputTokens": 3099,
+    "outputTokens": 498,
+    "usd": 0.000130158
+  },
+  "confidence": {
+    "truth": "Japan > Germany > France > United Kingdom > Italy > Spain > Canada > Poland > Australia > Chile > Portugal > Greece",
+    "plainTau": [
+      0.818,
+      0.697,
+      0.848,
+      0.636,
+      0.788
+    ],
+    "plainTauMean": 0.758,
+    "confidentTau": [
+      0.848,
+      0.879,
+      0.879,
+      0.848,
+      0.879
+    ],
+    "confidentTauMean": 0.867,
+    "lastPlainOrder": "Japan > Germany > Spain > France > United Kingdom > Italy > Australia > Poland > Canada > Portugal > Chile > Greece",
+    "lastConfidentOrder": "Japan > Germany > France > United Kingdom > Italy > Spain > Poland > Australia > Canada > Portugal > Greece > Chile",
+    "plain": {
+      "requests": 5,
+      "comparisons": 37,
+      "totalMs": 1155,
+      "medianMs": 231,
+      "p95Ms": 274,
+      "inputTokens": 5325,
+      "outputTokens": 650,
+      "usd": 0.00022365000000000004
+    },
+    "confident": {
+      "requests": 2,
+      "comparisons": 66,
+      "totalMs": 467,
+      "medianMs": 240,
+      "p95Ms": 240,
+      "inputTokens": 6983,
+      "outputTokens": 1176,
+      "usd": 0.000293286
+    }
+  }
+}
