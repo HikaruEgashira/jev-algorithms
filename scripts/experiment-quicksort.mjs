@@ -9,6 +9,7 @@
 import {
 	sortByPairwise,
 	sortByPairwiseWith,
+	UnionFind,
 	DEFAULT_MAX_PAIRS_PER_REQUEST,
 } from "../dist/index.js";
 
@@ -16,6 +17,11 @@ const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 const MODEL = process.env.TYPESAFE_MODEL || "jev-latest";
 // TypeSafe publishes $0.042 per million input tokens; output tokens are free.
 const USD_PER_INPUT_TOKEN = 0.042 / 1_000_000;
+// A stage-1 comparison is ambiguous when its probability sits within this
+// distance of 0.5. Tunable so the cluster sizes can be inspected.
+const AMBIGUITY = Number(process.env.AMBIGUITY ?? 0.2);
+// Number of repeated runs for the accuracy comparison.
+const TRIALS = Number(process.env.TRIALS ?? 20);
 
 const apiKey = process.env.TYPESAFE_API_KEY;
 if (!apiKey) throw new Error("set TYPESAFE_API_KEY");
@@ -153,20 +159,97 @@ const allPairs = (n) => {
 };
 
 /**
- * Confidence-verified ranking: brute-force every pair, then order by the
- * confidence-weighted margin sum(p - 0.5). Confident comparisons dominate the
- * score, so near-ties cannot flip the result the way a single 0.51 answer can.
+ * Confidence-weighted order of a subset, given already-asked probabilities.
+ * Confident comparisons dominate; near-ties barely move the score.
  */
-async function rankByConfidence(client, items, { task, stateOf }) {
-	const pairs = allPairs(items.length);
-	const probabilities = await askPairs(client, items, task, stateOf, pairs);
-	const score = new Map(items.map((item) => [item, 0]));
+function rankSubset(items, subset, pairs, probabilities) {
+	const score = new Map(subset.map((index) => [items[index], 0]));
 	pairs.forEach(([a, b], k) => {
 		const margin = probabilities[k] - 0.5;
 		score.set(items[a], score.get(items[a]) + margin);
 		score.set(items[b], score.get(items[b]) - margin);
 	});
-	return [...items].sort((a, b) => score.get(b) - score.get(a));
+	return [...subset]
+		.sort((a, b) => score.get(items[b]) - score.get(items[a]))
+		.map((index) => items[index]);
+}
+
+/**
+ * Two-stage sort. Stage 1 is the normal quicksort and records each comparison's
+ * probability. Pairs whose answer was ambiguous (p near 0.5) are unioned into
+ * clusters; stage 2 brute-forces every pair inside those clusters and re-ranks
+ * them by confidence. Clusters are far smaller than the input, so the exhaustive
+ * second pass stays cheap. All clusters share one batched round of requests.
+ */
+async function twoStageSort(client, items, { task, stateOf, ambiguity }) {
+	const comparisons = [];
+	const compare = async (pairs) => {
+		const probabilities = await askPairs(client, items, task, stateOf, pairs);
+		comparisons.push({ pairs, probabilities });
+		return probabilities.map((probability) => probability >= 0.5);
+	};
+	const stage1 = await sortByPairwiseWith(items, compare);
+
+	const uf = new UnionFind(items.map((_, index) => index));
+	for (const { pairs, probabilities } of comparisons)
+		pairs.forEach(([a, b], k) => {
+			if (Math.abs(probabilities[k] - 0.5) < ambiguity) uf.union(a, b);
+		});
+	const members = uf.groups().filter((cluster) => cluster.length >= 2);
+
+	const stage2Pairs = [];
+	for (const cluster of members)
+		for (let i = 0; i < cluster.length; i++)
+			for (let j = i + 1; j < cluster.length; j++)
+				stage2Pairs.push([cluster[i], cluster[j]]);
+	const stage2Probabilities = stage2Pairs.length
+		? await askPairs(client, items, task, stateOf, stage2Pairs)
+		: [];
+
+	const stage2PairIndex = new Map();
+	stage2Pairs.forEach(([a, b], k) => stage2PairIndex.set(`${a}|${b}`, k));
+	const stage2ProbabilityOf = (a, b) => {
+		const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+		const value = stage2Probabilities[stage2PairIndex.get(key)];
+		return a < b ? value : 1 - value;
+	};
+
+	const order = [...stage1];
+	for (const cluster of members) {
+		const clusterPairs = [];
+		for (let i = 0; i < cluster.length; i++)
+			for (let j = i + 1; j < cluster.length; j++) clusterPairs.push([cluster[i], cluster[j]]);
+		const probabilities = clusterPairs.map(([a, b]) => stage2ProbabilityOf(a, b));
+		const reranked = rankSubset(items, cluster, clusterPairs, probabilities);
+		const slots = cluster
+			.map((index) => order.indexOf(items[index]))
+			.sort((a, b) => a - b);
+		slots.forEach((slot, k) => {
+			order[slot] = reranked[k];
+		});
+	}
+
+	const stage1Comparisons = comparisons.reduce(
+		(sum, entry) => sum + entry.pairs.length,
+		0,
+	);
+	return {
+		order,
+		clusters: members.map((cluster) => cluster.map((index) => items[index])),
+		stage1Comparisons,
+		stage2Comparisons: stage2Pairs.length,
+		stage2Requests: stage2Pairs.length
+			? Math.ceil(stage2Pairs.length / 40)
+			: 0,
+	};
+}
+
+/** Reference point: brute-force every pair over the whole input. */
+async function fullRoundRobin(client, items, { task, stateOf }) {
+	const indices = items.map((_, i) => i);
+	const pairs = allPairs(items.length);
+	const probabilities = await askPairs(client, items, task, stateOf, pairs);
+	return rankSubset(items, indices, pairs, probabilities);
 }
 
 // ── 1. usage example: reply-first inbox ────────────────────────────
@@ -222,17 +305,17 @@ async function scaling(repeats = 3) {
 }
 
 // ── 3. Pokemon: cyclic dominance ───────────────────────────────────
-const TYPES = ["Fire", "Water", "Grass", "Electric", "Ground", "Flying", "Rock", "Fighting"];
+const TYPES = ["ほのお", "みず", "くさ", "でんき", "じめん", "ひこう", "いわ", "かくとう"];
 // Single-type effectiveness (attacker -> defender); 2 = super, 0.5 = resisted, 0 = immune.
 const CHART = {
-	Fire: { Grass: 2, Water: 0.5, Rock: 0.5, Fire: 0.5 },
-	Water: { Fire: 2, Ground: 2, Rock: 2, Grass: 0.5, Water: 0.5 },
-	Grass: { Water: 2, Ground: 2, Rock: 2, Fire: 0.5, Grass: 0.5, Flying: 0.5 },
-	Electric: { Water: 2, Flying: 2, Grass: 0.5, Electric: 0.5, Ground: 0 },
-	Ground: { Fire: 2, Electric: 2, Rock: 2, Grass: 0.5, Flying: 0 },
-	Flying: { Grass: 2, Fighting: 2, Electric: 0.5, Rock: 0.5 },
-	Rock: { Fire: 2, Flying: 2, Fighting: 0.5, Ground: 0.5 },
-	Fighting: { Rock: 2, Flying: 0.5 },
+	ほのお: { くさ: 2, みず: 0.5, いわ: 0.5, ほのお: 0.5 },
+	みず: { ほのお: 2, じめん: 2, いわ: 2, くさ: 0.5, みず: 0.5 },
+	くさ: { みず: 2, じめん: 2, いわ: 2, ほのお: 0.5, くさ: 0.5, ひこう: 0.5 },
+	でんき: { みず: 2, ひこう: 2, くさ: 0.5, でんき: 0.5, じめん: 0 },
+	じめん: { ほのお: 2, でんき: 2, いわ: 2, くさ: 0.5, ひこう: 0 },
+	ひこう: { くさ: 2, かくとう: 2, でんき: 0.5, いわ: 0.5 },
+	いわ: { ほのお: 2, ひこう: 2, かくとう: 0.5, じめん: 0.5 },
+	かくとう: { いわ: 2, ひこう: 0.5 },
 };
 const effectiveness = (a, b) => (a === b ? 0.5 : (CHART[a]?.[b] ?? 1));
 const beats = (a, b) => effectiveness(a, b) > effectiveness(b, a);
@@ -303,12 +386,12 @@ async function pokemon() {
 	};
 }
 
-// ── 4. confidence-verified ranking on a known ground truth ─────────
+// ── 4. two-stage sort on a known ground truth ──────────────────────
 // 12 countries by population. Jev sees only the names; the true order is known.
 const COUNTRIES = [
-	["Japan", 124.5], ["Germany", 84.5], ["France", 68.2], ["United Kingdom", 67.7],
-	["Italy", 58.9], ["Spain", 48.4], ["Canada", 40.1], ["Poland", 36.8],
-	["Australia", 26.7], ["Chile", 19.6], ["Portugal", 10.5], ["Greece", 10.3],
+	["日本", 124.5], ["ドイツ", 84.5], ["フランス", 68.2], ["イギリス", 67.7],
+	["イタリア", 58.9], ["スペイン", 48.4], ["カナダ", 40.1], ["ポーランド", 36.8],
+	["オーストラリア", 26.7], ["チリ", 19.6], ["ポルトガル", 10.5], ["ギリシャ", 10.3],
 ];
 
 const kendallTau = (a, b) => {
@@ -330,35 +413,74 @@ async function confidence(trials = 5) {
 	const task = "by today's population, larger first";
 	const stateOf = (name) => ({ country: name });
 
-	const plainTau = [];
-	const confidentTau = [];
-	let plainCalls = [];
-	let confidentCalls = [];
-	let plainOrder = [];
-	let confidentOrder = [];
+	const taus = { plain: [], twoStage: [], full: [] };
+	const summaries = { plain: [], twoStage: [], full: [] };
+	const clusterSizes = [];
+	const stage2 = [];
+	let lastOrders = { plain: [], twoStage: [], full: [] };
 	for (let trial = 0; trial < trials; trial++) {
 		const plain = recordingClient();
-		plainOrder = await sortByPairwise(plain.client, names, { task, stateOf });
-		plainTau.push(kendallTau(plainOrder, truth));
-		plainCalls = plain.calls;
+		lastOrders.plain = await sortByPairwise(plain.client, names, { task, stateOf });
+		taus.plain.push(kendallTau(lastOrders.plain, truth));
+		summaries.plain.push(summarize(plain.calls));
 
-		const verified = recordingClient();
-		confidentOrder = await rankByConfidence(verified.client, names, { task, stateOf });
-		confidentTau.push(kendallTau(confidentOrder, truth));
-		confidentCalls = verified.calls;
+		const staged = recordingClient();
+		const twoStage = await twoStageSort(staged.client, names, {
+			task,
+			stateOf,
+			ambiguity: AMBIGUITY,
+		});
+		lastOrders.twoStage = twoStage.order;
+		taus.twoStage.push(kendallTau(twoStage.order, truth));
+		summaries.twoStage.push(summarize(staged.calls));
+		clusterSizes.push(...twoStage.clusters.map((cluster) => cluster.length));
+		stage2.push({
+			comparisons: twoStage.stage2Comparisons,
+			requests: twoStage.stage2Requests,
+		});
+
+		const full = recordingClient();
+		lastOrders.full = await fullRoundRobin(full.client, names, { task, stateOf });
+		taus.full.push(kendallTau(lastOrders.full, truth));
+		summaries.full.push(summarize(full.calls));
 	}
 
 	const mean = (xs) => xs.reduce((sum, x) => sum + x, 0) / xs.length;
+	const round = (xs) => xs.map((t) => +t.toFixed(3));
+	const average = (runs) => {
+		const averaged = averageSummaries(runs);
+		return {
+			comparisons: averaged.comparisons,
+			requests: +averaged.requests.toFixed(1),
+			usd: +averaged.usd.toFixed(6),
+		};
+	};
 	return {
 		truth: truth.join(" > "),
-		plainTau: plainTau.map((t) => +t.toFixed(3)),
-		plainTauMean: +mean(plainTau).toFixed(3),
-		confidentTau: confidentTau.map((t) => +t.toFixed(3)),
-		confidentTauMean: +mean(confidentTau).toFixed(3),
-		lastPlainOrder: plainOrder.join(" > "),
-		lastConfidentOrder: confidentOrder.join(" > "),
-		plain: summarize(plainCalls),
-		confident: summarize(confidentCalls),
+		tau: {
+			plain: round(taus.plain),
+			plainMean: +mean(taus.plain).toFixed(3),
+			twoStage: round(taus.twoStage),
+			twoStageMean: +mean(taus.twoStage).toFixed(3),
+			full: round(taus.full),
+			fullMean: +mean(taus.full).toFixed(3),
+		},
+		lastOrders: {
+			plain: lastOrders.plain.join(" > "),
+			twoStage: lastOrders.twoStage.join(" > "),
+			full: lastOrders.full.join(" > "),
+		},
+		plain: average(summaries.plain),
+		twoStage: average(summaries.twoStage),
+		full: average(summaries.full),
+		stage2: {
+			clustersPerTrial: +(clusterSizes.length / trials).toFixed(1),
+			meanClusterSize: clusterSizes.length
+				? +mean(clusterSizes).toFixed(1)
+				: 0,
+			comparisonsMean: +mean(stage2.map((s) => s.comparisons)).toFixed(1),
+			requestsMean: +mean(stage2.map((s) => s.requests)).toFixed(1),
+		},
 	};
 }
 
@@ -366,6 +488,6 @@ const report = {
 	inbox: await inbox(),
 	scaling: await scaling(),
 	pokemon: await pokemon(),
-	confidence: await confidence(),
+	confidence: await confidence(TRIALS),
 };
 console.log(JSON.stringify(report, null, 2));
