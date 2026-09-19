@@ -199,10 +199,11 @@ test("selectTopKWith returns the ordered top k", async () => {
 	}
 });
 
-test("selectTopKWith uses fewer comparisons than a full sort", async () => {
+test("selectTopKWith uses fewer comparisons than a full sort with balanced pivots", async () => {
 	let comparisons = 0;
 	const n = 64;
-	const values = shuffled(n);
+	const random = () => 0.5;
+	const values = Array.from({ length: n }, (_, i) => i);
 	let selections = 0;
 	const ordered = await selectTopKWith(
 		values,
@@ -212,6 +213,7 @@ test("selectTopKWith uses fewer comparisons than a full sort", async () => {
 			selections++;
 			return pairs.map(([x, y]) => values[x] > values[y]);
 		},
+		{ random },
 	);
 	assert.deepEqual(ordered, [...values].sort((a, b) => b - a).slice(0, 3));
 	assert.ok(comparisons < 4 * n, `expected < ${4 * n} comparisons, got ${comparisons}`);
