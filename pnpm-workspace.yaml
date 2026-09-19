@@ -1,0 +1,5 @@
+# pnpm 11 moved `overrides` out of package.json into the workspace settings.
+# qs is only pulled in by the Stryker dev tool; pin the patched release so the
+# Dependabot security update has somewhere to go.
+overrides:
+  qs: ^6.16.0
