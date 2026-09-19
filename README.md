@@ -58,22 +58,23 @@ algorithms on the same contract.
 ## Algorithms
 
 Every algorithm states its request cost in terms of `n` items. A request
-carries many questions, so "one request" is rarely one comparison.
+carries up to 40 questions, so "one request" is rarely one comparison.
 
 ### Sorting and selection
 
 | Function | What it does | Requests |
 | --- | --- | --- |
-| `sortByPairwise(client, items, options)` | Total order from pairwise "which ranks higher?" answers | `O(log n)` |
-| `sortByPairwiseWith(items, compare)` | Same, with an injected comparator (no client) | `O(log n)` |
-| `selectTopK(client, items, k, options)` | Top-k, ordered, via quickselect | `O(log n)` |
-| `selectTopKWith(items, k, compare)` | Same, with an injected comparator | `O(log n)` |
+| `sortByPairwise(client, items, options)` | Total order from pairwise "which ranks higher?" answers | `O((n/40) log n)` |
+| `sortByPairwiseWith(items, compare)` | Same, with an injected comparator (no client) | `O((n/40) log n)` |
+| `selectTopK(client, items, k, options)` | Top-k, ordered, via quickselect | `O(n/40 + (k/40) log k)` |
+| `selectTopKWith(items, k, compare)` | Same, with an injected comparator | `O(n/40 + (k/40) log k)` |
 | `createPairComparator(client, items, options)` | Build the comparator to plug Jev into any sort you own | — |
 
 The sort is randomized quicksort whose recursion runs level by level. Nodes on
-a level are disjoint, so all their pivot comparisons fit in one request — the
-whole order costs `~log n` round trips instead of `n log n`. `selectTopK` skips
-the side that cannot contain the k-th item.
+a level are disjoint, so a level's comparisons are batched into `⌈n/40⌉`
+requests at `DEFAULT_MAX_PAIRS_PER_REQUEST` pairs each. The whole order costs
+`O((n/40) log n)` requests instead of `n log n` individual comparisons.
+`selectTopK` skips the side that cannot contain the k-th item.
 
 ### Threshold search
 
@@ -124,7 +125,7 @@ builds each side's preference order with pairwise comparisons first.
 
 ## Design notes
 
-- **Batch by default.** Every algorithm packs many questions into one
+- **Batch by default.** Every algorithm packs up to 40 questions into one
   `evaluate` call and references items through a chunk-local index so a shared
   item travels once.
 - **Fail loud, not wrong.** If Jev omits an answer, algorithms throw. They

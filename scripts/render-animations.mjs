@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
 	clusterWith,
 	createMemoryClient,
+	DEFAULT_MAX_CLUSTER_PAIRS_PER_REQUEST,
 	DEFAULT_MAX_PAIRS_PER_REQUEST,
 	findFirstTrue,
 	selectTopKIndices,
@@ -440,6 +441,7 @@ async function renderCluster() {
 		return out.join("");
 	}
 
+	const reqs = Math.ceil(edges.length / DEFAULT_MAX_CLUSTER_PAIRS_PER_REQUEST);
 	const steps = [];
 	const stride = Math.ceil(edges.length / 12);
 	for (let i = 0; i <= edges.length; i += stride) {
@@ -447,7 +449,7 @@ async function renderCluster() {
 		steps.push({
 			svg: svgFrame(
 				"clusterByRelation",
-				`${edges.length} pairs in 1 request — compare ${labels[e.a]} vs ${labels[e.b]}`,
+				`${edges.length} pairs → ${reqs} request${reqs === 1 ? "" : "s"} (≤${DEFAULT_MAX_CLUSTER_PAIRS_PER_REQUEST} per request) — compare ${labels[e.a]} vs ${labels[e.b]}`,
 				draw(i, false),
 			),
 			hold: 3,
@@ -461,7 +463,7 @@ async function renderCluster() {
 	steps.push({
 		svg: svgFrame(
 			"clusterByRelation",
-			`${clusters.length} clusters from ${edges.length} comparisons in 1 request`,
+			`${clusters.length} clusters from ${edges.length} comparisons in ${reqs} request${reqs === 1 ? "" : "s"}`,
 			draw(edges.length, true),
 		),
 		hold: 8,
