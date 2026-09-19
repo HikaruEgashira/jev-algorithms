@@ -6,7 +6,7 @@ export const DEFAULT_MAX_PAIRS_PER_REQUEST = 40;
 /** Hard cap on sort/selection rounds before falling back to the current order. */
 export const DEFAULT_MAX_ROUNDS = 40;
 
-export interface PairwiseOptions<T> {
+export interface SortOptions<T> {
 	/** Ranking goal woven into the question, e.g. "for replying first". */
 	task: string;
 	/** Map an item to the Jev state Jev compares. */
@@ -26,7 +26,7 @@ export type PairComparator = (pairs: Array<[number, number]>) => Promise<boolean
 export function createPairComparator<T>(
 	client: JevClient,
 	items: readonly T[],
-	options: PairwiseOptions<T>,
+	options: SortOptions<T>,
 ): PairComparator {
 	const {
 		task,
@@ -96,7 +96,7 @@ interface SortNode {
 }
 
 /** Randomized quicksort, one recursion level per `compare` call. */
-export async function sortIndicesByPairwise(
+export async function sortIndices(
 	indices: readonly number[],
 	compare: PairComparator,
 	options: { random?: () => number; maxRounds?: number } = {},
@@ -161,12 +161,12 @@ export interface SortRuntimeOptions {
 }
 
 /** Sort items highest-first using an injected comparator. */
-export async function sortByPairwiseWith<T>(
+export async function sortWith<T>(
 	items: readonly T[],
 	compare: PairComparator,
 	options: SortRuntimeOptions = {},
 ): Promise<T[]> {
-	const order = await sortIndicesByPairwise(
+	const order = await sortIndices(
 		items.map((_, i) => i),
 		compare,
 		options,
@@ -175,12 +175,12 @@ export async function sortByPairwiseWith<T>(
 }
 
 /** Sort items highest-first using Jev as the pairwise oracle. */
-export async function sortByPairwise<T>(
+export async function sort<T>(
 	client: JevClient,
 	items: readonly T[],
-	options: PairwiseOptions<T>,
+	options: SortOptions<T>,
 ): Promise<T[]> {
-	return sortByPairwiseWith(items, createPairComparator(client, items, options), options);
+	return sortWith(items, createPairComparator(client, items, options), options);
 }
 
 /**
@@ -196,7 +196,7 @@ export async function selectTopKIndices(
 ): Promise<number[]> {
 	const { random = Math.random, maxRounds = DEFAULT_MAX_ROUNDS } = options;
 	if (k <= 0) return [];
-	if (k >= indices.length) return sortIndicesByPairwise(indices, compare, options);
+	if (k >= indices.length) return sortIndices(indices, compare, options);
 
 	const confirmed: number[] = [];
 	let candidates = [...indices];
@@ -247,7 +247,7 @@ export async function selectTopKWith<T>(
 		compare,
 		options,
 	);
-	const ordered = await sortIndicesByPairwise(indices, compare, options);
+	const ordered = await sortIndices(indices, compare, options);
 	return ordered.map((i) => items[i]);
 }
 
@@ -256,7 +256,7 @@ export async function selectTopK<T>(
 	client: JevClient,
 	items: readonly T[],
 	k: number,
-	options: PairwiseOptions<T>,
+	options: SortOptions<T>,
 ): Promise<T[]> {
 	return selectTopKWith(items, k, createPairComparator(client, items, options), options);
 }

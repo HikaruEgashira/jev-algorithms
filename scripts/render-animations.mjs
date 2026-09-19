@@ -12,7 +12,7 @@ import {
 	DEFAULT_MAX_PAIRS_PER_REQUEST,
 	findFirstTrue,
 	selectTopKIndices,
-	sortByPairwiseWith,
+	sortWith,
 	UnionFind,
 } from "../dist/index.js";
 
@@ -133,7 +133,7 @@ async function renderSort() {
 	const max = Math.max(...values);
 
 	const calls = [];
-	const ordered = await sortByPairwiseWith(
+	const ordered = await sortWith(
 		values.map((value, id) => ({ value, id })),
 		async (pairs) => {
 			const decisions = pairs.map(([a, b]) => values[a] > values[b]);
@@ -225,7 +225,7 @@ async function renderSort() {
 		}
 		steps.push({
 			svg: svgFrame(
-				"sortByPairwise",
+				"sort",
 				`level ${level + 1}: ${calls[level].pairs.length} comparisons → ${reqs} request${reqs === 1 ? "" : "s"} (≤${DEFAULT_MAX_PAIRS_PER_REQUEST} per request)`,
 				drawBars(inOrder(root, level - 1), (id) => (pivots.has(id) ? "pivot" : placed.has(id) ? "good" : "normal"), arcs) +
 					legend(H - 26, [[C.accent, "pivot"], [C.amber, "compared"], [C.good, "in place"]]),
@@ -235,7 +235,7 @@ async function renderSort() {
 		const after = placedBefore(level + 1);
 		steps.push({
 			svg: svgFrame(
-				"sortByPairwise",
+				"sort",
 				"each pivot lands in its sorted slot",
 				drawBars(inOrder(root, level), (id) => (after.has(id) ? "good" : "normal")),
 			),
@@ -244,7 +244,7 @@ async function renderSort() {
 	}
 	steps.push({
 		svg: svgFrame(
-			"sortByPairwise",
+			"sort",
 			`${ordered.length} items ordered in ${totalRequests} requests`,
 			drawBars(inOrder(root, maxLevel), () => "good") + legend(H - 26, [[C.good, "sorted"]]),
 		),

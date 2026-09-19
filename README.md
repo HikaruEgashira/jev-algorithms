@@ -2,7 +2,7 @@
 
 ## Gallery
 
-![sortByPairwise](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/sort-by-pairwise.gif)
+![sort](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/sort-by-pairwise.gif)
 ![selectTopK](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/select-top-k.gif)
 ![findFirstTrue](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/find-first-true.gif)
 ![clusterByRelation](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/cluster-by-relation.gif)
@@ -16,7 +16,7 @@ npm install @hikae/jev-algorithms
 ## Quick start
 
 ```ts
-import { createTypeSafeClient, sortByPairwise } from "@hikae/jev-algorithms";
+import { createTypeSafeClient, sort } from "@hikae/jev-algorithms";
 
 const jev = createTypeSafeClient({ apiKey: process.env.TYPESAFE_API_KEY! });
 
@@ -25,7 +25,7 @@ const inbox = [
   { id: "2", from: "news@acme.com", subject: "Weekly digest", unread: false, body: "This week in..." },
 ];
 
-const ordered = await sortByPairwise(jev, inbox, {
+const ordered = await sort(jev, inbox, {
   task: "for replying first",
   stateOf: (mail) => ({
     from: mail.from,
@@ -64,8 +64,8 @@ carries up to 40 questions, so "one request" is rarely one comparison.
 
 | Function | What it does | Requests |
 | --- | --- | --- |
-| `sortByPairwise(client, items, options)` | Total order from pairwise "which ranks higher?" answers | `O((n/40) log n)` |
-| `sortByPairwiseWith(items, compare)` | Same, with an injected comparator (no client) | `O((n/40) log n)` |
+| `sort(client, items, options)` | Total order from pairwise "which ranks higher?" answers | `O((n/40) log n)` |
+| `sortWith(items, compare)` | Same, with an injected comparator (no client) | `O((n/40) log n)` |
 | `selectTopK(client, items, k, options)` | Top-k, ordered, via quickselect | `O(n/40 + (k/40) log k)` |
 | `selectTopKWith(items, k, compare)` | Same, with an injected comparator | `O(n/40 + (k/40) log k)` |
 | `createPairComparator(client, items, options)` | Build the comparator to plug Jev into any sort you own | — |

@@ -1,9 +1,9 @@
 import type { JevClient, JevState } from "../client.js";
 import {
 	createPairComparator,
-	sortByPairwiseWith,
+	sortWith,
 	type SortRuntimeOptions,
-} from "./pairwise.js";
+} from "./sort.js";
 
 /** Proposer-optimal stable matching (Gale-Shapley). */
 export function stableMatching(
@@ -97,7 +97,7 @@ export async function buildPreferences<C, D>(
 			maxPairsPerRequest,
 			random,
 		});
-		const ordered = await sortByPairwiseWith(candidates, compare, runtime);
+		const ordered = await sortWith(candidates, compare, runtime);
 		prefs[idOfChooser(chooser)] = ordered.map(idOfCandidate);
 	}
 

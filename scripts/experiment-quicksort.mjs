@@ -7,8 +7,8 @@
 // TypeSafe API, and prints one JSON report: sort cost by n, the Pokemon cyclic
 // dominance failure, and the confidence-verified ranking that fixes it.
 import {
-	sortByPairwise,
-	sortByPairwiseWith,
+	sort,
+	sortWith,
 	UnionFind,
 	DEFAULT_MAX_PAIRS_PER_REQUEST,
 } from "../dist/index.js";
@@ -188,7 +188,7 @@ async function twoStageSort(client, items, { task, stateOf, ambiguity }) {
 		comparisons.push({ pairs, probabilities });
 		return probabilities.map((probability) => probability >= 0.5);
 	};
-	const stage1 = await sortByPairwiseWith(items, compare);
+	const stage1 = await sortWith(items, compare);
 
 	const uf = new UnionFind(items.map((_, index) => index));
 	for (const { pairs, probabilities } of comparisons)
@@ -265,7 +265,7 @@ async function inbox() {
 		{ from: "billing@vendor.com", subject: "未払いのお知らせ（期限超過）", body: "支払期限を3日過ぎています。至急ご対応ください。" },
 	];
 	const recorder = recordingClient();
-	const ordered = await sortByPairwise(recorder.client, mail, {
+	const ordered = await sort(recorder.client, mail, {
 		task: "for replying first",
 		stateOf: (m) => ({ from: m.from, subject: m.subject, preview: m.body }),
 	});
@@ -293,7 +293,7 @@ async function scaling(repeats = 3) {
 		const runs = [];
 		for (let repeat = 0; repeat < repeats; repeat++) {
 			const recorder = recordingClient();
-			await sortByPairwise(recorder.client, items, {
+			await sort(recorder.client, items, {
 				task: "by how soon its deadline is",
 				stateOf: (item) => ({ title: item.title, deadline: item.deadline }),
 			});
@@ -305,17 +305,31 @@ async function scaling(repeats = 3) {
 }
 
 // ── 3. Pokemon: cyclic dominance ───────────────────────────────────
-const TYPES = ["ほのお", "みず", "くさ", "でんき", "じめん", "ひこう", "いわ", "かくとう"];
-// Single-type effectiveness (attacker -> defender); 2 = super, 0.5 = resisted, 0 = immune.
+// All 18 types. Single-type effectiveness (attacker -> defender); only non-1
+// entries are listed: 2 = super effective, 0.5 = resisted, 0 = immune.
+const TYPES = [
+	"ノーマル", "ほのお", "みず", "でんき", "くさ", "こおり", "かくとう", "どく", "じめん",
+	"ひこう", "エスパー", "むし", "いわ", "ゴースト", "ドラゴン", "あく", "はがね", "フェアリー",
+];
 const CHART = {
-	ほのお: { くさ: 2, みず: 0.5, いわ: 0.5, ほのお: 0.5 },
-	みず: { ほのお: 2, じめん: 2, いわ: 2, くさ: 0.5, みず: 0.5 },
-	くさ: { みず: 2, じめん: 2, いわ: 2, ほのお: 0.5, くさ: 0.5, ひこう: 0.5 },
-	でんき: { みず: 2, ひこう: 2, くさ: 0.5, でんき: 0.5, じめん: 0 },
-	じめん: { ほのお: 2, でんき: 2, いわ: 2, くさ: 0.5, ひこう: 0 },
-	ひこう: { くさ: 2, かくとう: 2, でんき: 0.5, いわ: 0.5 },
-	いわ: { ほのお: 2, ひこう: 2, かくとう: 0.5, じめん: 0.5 },
-	かくとう: { いわ: 2, ひこう: 0.5 },
+	ノーマル: { いわ: 0.5, ゴースト: 0, はがね: 0.5 },
+	ほのお: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 2, むし: 2, いわ: 0.5, ドラゴン: 0.5, はがね: 2 },
+	みず: { ほのお: 2, みず: 0.5, くさ: 0.5, じめん: 2, いわ: 2, ドラゴン: 0.5 },
+	でんき: { みず: 2, でんき: 0.5, くさ: 0.5, じめん: 0, ひこう: 2, ドラゴン: 0.5 },
+	くさ: { ほのお: 0.5, みず: 2, くさ: 0.5, どく: 0.5, じめん: 2, ひこう: 0.5, むし: 0.5, いわ: 2, ドラゴン: 0.5, はがね: 0.5 },
+	こおり: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 0.5, じめん: 2, ひこう: 2, ドラゴン: 2, はがね: 0.5 },
+	かくとう: { ノーマル: 2, こおり: 2, どく: 0.5, ひこう: 0.5, エスパー: 0.5, むし: 0.5, いわ: 2, ゴースト: 0, あく: 2, はがね: 2, フェアリー: 0.5 },
+	どく: { くさ: 2, どく: 0.5, じめん: 0.5, いわ: 0.5, ゴースト: 0.5, はがね: 0, フェアリー: 2 },
+	じめん: { ほのお: 2, でんき: 2, くさ: 0.5, どく: 2, ひこう: 0, むし: 0.5, いわ: 2, はがね: 2 },
+	ひこう: { でんき: 0.5, くさ: 2, かくとう: 2, むし: 2, いわ: 0.5, はがね: 0.5 },
+	エスパー: { かくとう: 2, どく: 2, エスパー: 0.5, あく: 0, はがね: 0.5 },
+	むし: { ほのお: 0.5, くさ: 2, かくとう: 0.5, どく: 0.5, ひこう: 0.5, エスパー: 2, ゴースト: 0.5, あく: 2, はがね: 0.5, フェアリー: 0.5 },
+	いわ: { ほのお: 2, こおり: 2, かくとう: 0.5, じめん: 0.5, ひこう: 2, むし: 2, はがね: 0.5 },
+	ゴースト: { ノーマル: 0, エスパー: 2, ゴースト: 2, あく: 0.5 },
+	ドラゴン: { ドラゴン: 2, はがね: 0.5, フェアリー: 0 },
+	あく: { かくとう: 0.5, エスパー: 2, ゴースト: 2, あく: 0.5, フェアリー: 0.5 },
+	はがね: { ほのお: 0.5, みず: 0.5, でんき: 0.5, こおり: 2, いわ: 2, はがね: 0.5, フェアリー: 2 },
+	フェアリー: { ほのお: 0.5, かくとう: 2, どく: 0.5, ドラゴン: 2, あく: 2, はがね: 0.5 },
 };
 const effectiveness = (a, b) => (a === b ? 0.5 : (CHART[a]?.[b] ?? 1));
 const beats = (a, b) => effectiveness(a, b) > effectiveness(b, a);
@@ -369,19 +383,39 @@ async function pokemon() {
 	const orders = [];
 	for (const seed of [0, 0.5, 0.25]) {
 		orders.push(
-			await sortByPairwiseWith(TYPES, orderedFromMatrix, { random: () => seed }),
+			await sortWith(TYPES, orderedFromMatrix, { random: () => seed }),
 		);
 	}
 
 	// The textbook cycle the chart itself contains, independent of Jev.
 	const chartCycles = findCycles((i, j) => beats(TYPES[i], TYPES[j]));
 
+	// The two-stage remedy on the same types: stage 1 sorts, stage 2 brute-forces
+	// the ambiguous clusters. Re-run so the output's stability is visible.
+	const improvedOrders = [];
+	const improvedRuns = [];
+	for (let trial = 0; trial < 3; trial++) {
+		const improved = recordingClient();
+		const result = await twoStageSort(improved.client, TYPES, {
+			task: pokemonTask,
+			stateOf: pokemonState,
+			ambiguity: AMBIGUITY,
+		});
+		improvedOrders.push(result.order.join(" > "));
+		improvedRuns.push(summarize(improved.calls));
+	}
+
 	return {
 		jevCycles: cycles.length,
-		jevCycleSample: cycles.slice(0, 3),
+		jevCycleSample: [cycles[0], cycles[Math.floor(cycles.length / 2)], cycles.at(-1)].filter(
+			Boolean,
+		),
 		chartCycles,
 		orders: orders.map((order) => order.join(" > ")),
 		distinctOrders: new Set(orders.map((order) => order.join(" > "))).size,
+		improvedOrders,
+		distinctImprovedOrders: new Set(improvedOrders).size,
+		improved: averageSummaries(improvedRuns),
 		...summarize(recorder.calls),
 	};
 }
@@ -420,7 +454,7 @@ async function confidence(trials = 5) {
 	let lastOrders = { plain: [], twoStage: [], full: [] };
 	for (let trial = 0; trial < trials; trial++) {
 		const plain = recordingClient();
-		lastOrders.plain = await sortByPairwise(plain.client, names, { task, stateOf });
+		lastOrders.plain = await sort(plain.client, names, { task, stateOf });
 		taus.plain.push(kendallTau(lastOrders.plain, truth));
 		summaries.plain.push(summarize(plain.calls));
 

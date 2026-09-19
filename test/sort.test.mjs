@@ -6,8 +6,8 @@ import {
 	selectTopK,
 	selectTopKIndices,
 	selectTopKWith,
-	sortByPairwise,
-	sortByPairwiseWith,
+	sort,
+	sortWith,
 } from "../dist/index.js";
 
 function numericClient() {
@@ -77,7 +77,7 @@ test("comparator throws when Jev omits an answer or returns a non-finite one", a
 	);
 });
 
-test("sortByPairwise returns a strict highest-first order", async () => {
+test("sort returns a strict highest-first order", async () => {
 	for (let trial = 0; trial < 50; trial++) {
 		const n = 2 + (trial % 24);
 		const values = shuffled(n);
@@ -91,7 +91,7 @@ test("sortByPairwise returns a strict highest-first order", async () => {
 			});
 			return answers;
 		});
-		const ordered = await sortByPairwise(client, values, {
+		const ordered = await sort(client, values, {
 			task: "by size",
 			stateOf: (v) => v,
 		});
@@ -100,10 +100,10 @@ test("sortByPairwise returns a strict highest-first order", async () => {
 	}
 });
 
-test("sortByPairwiseWith only needs a comparator", async () => {
+test("sortWith only needs a comparator", async () => {
 	const items = ["a", "b", "c", "d"];
 	const rank = { a: 1, b: 4, c: 2, d: 3 };
-	const ordered = await sortByPairwiseWith(items, async (pairs) =>
+	const ordered = await sortWith(items, async (pairs) =>
 		pairs.map(([x, y]) => rank[items[x]] > rank[items[y]]),
 	);
 	assert.deepEqual(ordered, ["b", "d", "c", "a"]);
@@ -115,8 +115,8 @@ test("sorting zero or one item never compares", async () => {
 		calls++;
 		return [];
 	};
-	assert.deepEqual(await sortByPairwiseWith([], compare), []);
-	assert.deepEqual(await sortByPairwiseWith(["only"], compare), ["only"]);
+	assert.deepEqual(await sortWith([], compare), []);
+	assert.deepEqual(await sortWith(["only"], compare), ["only"]);
 	assert.equal(calls, 0);
 });
 
@@ -164,7 +164,7 @@ test("selectTopK ranks the winners through the client", async () => {
 test("sorting falls back to a permutation at the round cap", async () => {
 	const compare = async (pairs) => pairs.map(() => false);
 	const items = [1, 2, 3, 4, 5];
-	const out = await sortByPairwiseWith(items, compare, { maxRounds: 2, random: () => 0 });
+	const out = await sortWith(items, compare, { maxRounds: 2, random: () => 0 });
 	assert.deepEqual([...out].sort((a, b) => a - b), [1, 2, 3, 4, 5]);
 });
 
