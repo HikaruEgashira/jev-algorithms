@@ -3,5 +3,6 @@ dist/
 reports/
 .stryker-tmp/
 .animation-frames/
+.pnpm-store/
 *.tsbuildinfo
 .DS_Store
