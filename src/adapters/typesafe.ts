@@ -21,12 +21,7 @@ interface SystemOneResponse {
 	model?: string;
 }
 
-/**
- * Jev over TypeSafe's own HTTP API.
- *
- * This is the runtime-agnostic default: no Cloudflare binding, no SDK. Billing
- * is TypeSafe's, not a cloud provider's.
- */
+/** Jev over TypeSafe's HTTP API. */
 export function createTypeSafeClient(options: TypeSafeClientOptions): JevClient {
 	const {
 		apiKey,

@@ -1,13 +1,4 @@
-/**
- * The Jev client contract.
- *
- * Jev (TypeSafe's structured-evaluation model) does not generate prose. You
- * give it one `state` and a map of typed `questions`, and it returns one
- * answer per question: a probability for Noul, a picked option for Choice, a
- * position on a scale for Score. Every algorithm in this package is built on
- * top of that single primitive, so it only depends on this interface — not on
- * TypeSafe, Cloudflare, or any HTTP library. Adapters live in `adapters/`.
- */
+/** The Jev client contract: one state, many typed questions, typed answers. */
 
 /** Any JSON value Jev can read as shared state. */
 export type JevState =

@@ -102,7 +102,6 @@ test("union-find seeds groups from its constructor and add is idempotent", () =>
 		[1, 2],
 	);
 
-	// Re-adding a member must not detach it from its existing group.
 	const uf = new UnionFind([1, 2]);
 	uf.union(1, 2);
 	uf.add(2);

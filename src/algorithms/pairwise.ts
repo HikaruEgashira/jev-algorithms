@@ -22,13 +22,7 @@ export interface PairwiseOptions<T> {
 /** Answers one batch of pairs: true means `pairs[i][0]` outranks `pairs[i][1]`. */
 export type PairComparator = (pairs: Array<[number, number]>) => Promise<boolean[]>;
 
-/**
- * Build a comparator that asks Jev which of two items ranks higher.
- *
- * Many pairs share one request against a shared `state`; each request carries
- * only the items its pairs reference, addressed by a chunk-local index. Throws
- * if Jev omits an answer, so callers never persist a fabricated order.
- */
+/** Comparator asking Jev which of two items ranks higher, batched per request. */
 export function createPairComparator<T>(
 	client: JevClient,
 	items: readonly T[],
@@ -101,15 +95,7 @@ interface SortNode {
 	low?: SortNode;
 }
 
-/**
- * Randomized quicksort over an injectable comparator, one recursion level per
- * `compare` call.
- *
- * Classic quicksort is sequential because a split decides the next comparison.
- * Level-order traversal removes that dependency: nodes on a level are disjoint,
- * so all their pivot comparisons fit in one request and the order costs
- * ~log n requests instead of one per comparison.
- */
+/** Randomized quicksort, one recursion level per `compare` call. */
 export async function sortIndicesByPairwise(
 	indices: readonly number[],
 	compare: PairComparator,

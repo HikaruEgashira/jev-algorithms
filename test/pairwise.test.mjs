@@ -10,7 +10,6 @@ import {
 	sortByPairwiseWith,
 } from "../dist/index.js";
 
-/** A client whose answers compare `candidates` numerically. */
 function numericClient() {
 	return createMemoryClient(({ state }) => {
 		const answers = {};
@@ -35,8 +34,6 @@ test("comparator batches 40 pairs per request", async () => {
 	const client = numericClient();
 	const compare = createPairComparator(client, items, { task: "by size", stateOf: (v) => v });
 
-	// 80 is a multiple of the 40-pair cap, exposing an off-by-one that would
-	// fire an extra empty request.
 	const pairs = Array.from({ length: 80 }, (_, i) => [i % 4, (i + 1) % 4]);
 	const decisions = await compare(pairs);
 
@@ -165,7 +162,6 @@ test("selectTopK ranks the winners through the client", async () => {
 });
 
 test("sorting falls back to a permutation at the round cap", async () => {
-	// A comparator that never promotes forces one item per round.
 	const compare = async (pairs) => pairs.map(() => false);
 	const items = [1, 2, 3, 4, 5];
 	const out = await sortByPairwiseWith(items, compare, { maxRounds: 2, random: () => 0 });
@@ -218,7 +214,6 @@ test("selectTopKWith uses fewer comparisons than a full sort", async () => {
 		},
 	);
 	assert.deepEqual(ordered, [...values].sort((a, b) => b - a).slice(0, 3));
-	// Full sort would be ~n log n ~ 380. Quickselect probes each level once.
 	assert.ok(comparisons < 4 * n, `expected < ${4 * n} comparisons, got ${comparisons}`);
 	assert.ok(selections < 3 * Math.log2(n) + 5, `rounds=${selections}`);
 });

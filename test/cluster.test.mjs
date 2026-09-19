@@ -34,7 +34,6 @@ test("clusterByRelation groups equal values transitively", async () => {
 
 test("threshold controls merging", async () => {
 	const items = [0, 1];
-	// A single pair, answered with a middling probability.
 	const weak = await clusterWith(items, async () => [0.4], { threshold: 0.5 });
 	assert.deepEqual(weak, [[0], [1]]);
 
@@ -109,7 +108,7 @@ test("clusterWith merges exactly at the threshold", async () => {
 });
 
 test("clusterWith does not sample when the pair count equals the cap", async () => {
-	const items = Array.from({ length: 31 }, (_, i) => i); // 465 unordered pairs
+	const items = Array.from({ length: 31 }, (_, i) => i);
 	let first = null;
 	await clusterWith(
 		items,
@@ -123,7 +122,7 @@ test("clusterWith does not sample when the pair count equals the cap", async () 
 });
 
 test("sampling shuffles deterministically under a fixed RNG", async () => {
-	const items = Array.from({ length: 100 }, (_, i) => i); // 4950 pairs
+	const items = Array.from({ length: 100 }, (_, i) => i);
 	let first = null;
 	await clusterWith(
 		items,
@@ -133,7 +132,6 @@ test("sampling shuffles deterministically under a fixed RNG", async () => {
 		},
 		{ maxComparisons: 25, random: () => 0 },
 	);
-	// Fisher-Yates with j = 0 leaves the original second pair on top.
 	assert.deepEqual(first, [0, 2]);
 });
 

@@ -1,11 +1,4 @@
-/**
- * Turn noisy pairwise outcomes into a global ranking.
- *
- * Jev never contradicts itself on purpose, but many independent pairwise
- * answers can form cycles (A > B > C > A). Elo and Bradley-Terry both absorb
- * that noise into a single score per item instead of pretending the graph is
- * a total order.
- */
+/** Aggregate noisy pairwise outcomes (which may cycle) into a global ranking. */
 
 export interface Comparison {
 	a: string;

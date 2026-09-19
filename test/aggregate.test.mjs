@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { bradleyTerry, elo, rankByBradleyTerry, rankByElo } from "../dist/index.js";
 
-// a beats b and c; b beats c.
 const transitive = [
 	{ a: "a", b: "b", winner: "first" },
 	{ a: "a", b: "c", winner: "first" },
@@ -34,8 +33,6 @@ test("draws count as half a win on both sides", () => {
 });
 
 test("the losing side of a non-draw is credited to b, not to a", () => {
-	// Guards the winner semantics: naming a player "b" must not swallow the
-	// result. Only "first"/"second"/"draw" decide the outcome.
 	const strengths = bradleyTerry([{ a: "b", b: "c", winner: "second" }]);
 	assert.ok(strengths.c > strengths.b, "c won, so c > b");
 });
@@ -87,7 +84,6 @@ test("ranking breaks a draw tie by id, not insertion order", () => {
 });
 
 test("a cycle still yields a total order", () => {
-	// Intentionally inconsistent: rock-paper-scissors style noise.
 	const noisy = [
 		{ a: "r", b: "p", winner: "first" },
 		{ a: "p", b: "s", winner: "first" },

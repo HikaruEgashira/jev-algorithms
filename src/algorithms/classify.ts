@@ -21,13 +21,7 @@ export interface ClassifyChoiceResult {
 	probabilities: Record<string, number>;
 }
 
-/**
- * Pick one label with an optional abstain band.
- *
- * Jev returns the full probability distribution plus a confidence score, so a
- * caller can act on high confidence, escalate the middle, and drop the rest
- * instead of forcing a guess.
- */
+/** Pick one label, abstaining below `abstainBelow` confidence. */
 export async function classifyChoice(
 	client: JevClient,
 	state: JevState,

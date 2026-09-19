@@ -5,13 +5,7 @@ import {
 	type SortRuntimeOptions,
 } from "./pairwise.js";
 
-/**
- * Proposer-optimal stable matching (Gale-Shapley).
- *
- * Every proposer ranks its acceptable receivers, every receiver ranks its
- * acceptable proposers. The result is stable: no pair would rather be
- * together than with the partners they were assigned.
- */
+/** Proposer-optimal stable matching (Gale-Shapley). */
 export function stableMatching(
 	proposers: readonly string[],
 	receivers: readonly string[],
@@ -77,13 +71,7 @@ export interface BuildPreferencesOptions<C, D> {
 	random?: () => number;
 }
 
-/**
- * Rank every candidate for every chooser with pairwise comparisons.
- *
- * Each chooser gets its own pairwise sort, so this costs one sort per chooser.
- * Feed the result to {@link stableMatching} once both sides' preferences are
- * built.
- */
+/** Rank every candidate for every chooser; one pairwise sort per chooser. */
 export async function buildPreferences<C, D>(
 	client: JevClient,
 	choosers: readonly C[],

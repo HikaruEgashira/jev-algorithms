@@ -17,7 +17,6 @@ test("stableMatching pairs proposer-optimally", () => {
 });
 
 test("stableMatching resolves contention by receiver preference", () => {
-	// Both want w1; w1 prefers m2, so m1 falls to w2.
 	const pairs = stableMatching(
 		["m1", "m2"],
 		["w1", "w2"],

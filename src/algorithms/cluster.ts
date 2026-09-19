@@ -6,11 +6,7 @@ export const DEFAULT_MAX_COMPARISONS = 2000;
 /** Pairs per Jev request. */
 export const DEFAULT_MAX_CLUSTER_PAIRS_PER_REQUEST = 40;
 
-/**
- * Answers one batch of pairs with the probability that the two items are the
- * same. Probabilities, not booleans, so the clustering threshold stays with
- * the caller.
- */
+/** Answers pairs with the probability that the two items are the same. */
 export type EquivalenceComparator = (
 	pairs: Array<[number, number]>,
 ) => Promise<number[]>;
@@ -91,13 +87,7 @@ export function createRelationComparator<T>(
 	};
 }
 
-/**
- * Union-find clustering over an injected equivalence comparator.
- *
- * Every pair is compared once, then `union` merges whenever the probability
- * clears the threshold. O(n^2) comparisons in the worst case; cap and sample
- * with `maxComparisons` when n is large.
- */
+/** Union-find clustering over an injected equivalence comparator. */
 export async function clusterWith<T>(
 	items: readonly T[],
 	compare: EquivalenceComparator,

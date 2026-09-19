@@ -7,12 +7,7 @@ export interface AiBinding {
 	run(model: string, input: unknown): Promise<unknown>;
 }
 
-/**
- * Jev over a Cloudflare Workers AI binding.
- *
- * Works with `env.AI` inside a Worker or a Durable Object. Kept structural so
- * this package stays free of `@cloudflare/workers-types`.
- */
+/** Jev over a Cloudflare Workers AI binding (`env.AI`). */
 export function createWorkersAiClient(
 	binding: AiBinding,
 	model: string = DEFAULT_MODEL,

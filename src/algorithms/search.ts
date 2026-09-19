@@ -19,12 +19,7 @@ export interface FindFirstTrueResult<T> {
 
 /**
  * Binary search for the first item a Jev predicate is true for.
- *
- * `items` must already be ordered so the predicate is monotone (all false,
- * then all true) — for example a list sorted by recency, asking "is this
- * older than 30 days?". Each step is one Jev call, so this finds a cutoff in
- * `O(log n)` requests. That is the point: the predicate is expensive, the
- * ordering is not.
+ * `items` must be ordered so the predicate is monotone. One call per step.
  */
 export async function findFirstTrue<T>(
 	client: JevClient,

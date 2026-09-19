@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTypeSafeClient, createWorkersAiClient, noul } from "../dist/index.js";
 
-/** Build a fetch double that records calls and returns a canned response. */
 function fetched(response) {
 	const calls = [];
 	const fetchImpl = async (url, init) => {

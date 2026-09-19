@@ -10,12 +10,7 @@ export interface MemoryClient extends JevClient {
 	readonly calls: JevEvaluation[];
 }
 
-/**
- * An in-memory Jev client driven by a responder.
- *
- * Use it to test a pipeline without calling the model, or to plug a
- * deterministic oracle into the sorting and clustering primitives.
- */
+/** In-memory Jev client driven by a responder, for tests and deterministic oracles. */
 export function createMemoryClient(responder: MemoryResponder): MemoryClient {
 	const calls: JevEvaluation[] = [];
 	return {
