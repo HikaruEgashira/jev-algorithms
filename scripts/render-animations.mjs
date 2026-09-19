@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
 	clusterWith,
 	createMemoryClient,
+	DEFAULT_MAX_PAIRS_PER_REQUEST,
 	findFirstTrue,
 	selectTopKIndices,
 	sortByPairwiseWith,
@@ -207,8 +208,12 @@ async function renderSort() {
 		return out.join("");
 	}
 
+	const reqOf = (pairs) => Math.ceil(pairs.length / DEFAULT_MAX_PAIRS_PER_REQUEST);
+	const totalRequests = calls.reduce((sum, call) => sum + reqOf(call.pairs), 0);
+
 	const steps = [];
 	for (let level = 0; level < calls.length; level++) {
+		const reqs = reqOf(calls[level].pairs);
 		const nodes = byLevel[level] ?? [];
 		const pivots = new Set(nodes.filter((n) => n.pivot !== undefined).map((n) => n.pivot));
 		const placed = placedBefore(level);
@@ -220,7 +225,7 @@ async function renderSort() {
 		steps.push({
 			svg: svgFrame(
 				"sortByPairwise",
-				`level ${level + 1}: 1 request — ${calls[level].pairs.length} pairwise comparisons`,
+				`level ${level + 1}: ${calls[level].pairs.length} comparisons → ${reqs} request${reqs === 1 ? "" : "s"} (≤${DEFAULT_MAX_PAIRS_PER_REQUEST} per request)`,
 				drawBars(inOrder(root, level - 1), (id) => (pivots.has(id) ? "pivot" : placed.has(id) ? "good" : "normal"), arcs) +
 					legend(H - 26, [[C.accent, "pivot"], [C.amber, "compared"], [C.good, "in place"]]),
 			),
@@ -239,7 +244,7 @@ async function renderSort() {
 	steps.push({
 		svg: svgFrame(
 			"sortByPairwise",
-			`${ordered.length} items ordered in ${calls.length} requests`,
+			`${ordered.length} items ordered in ${totalRequests} requests`,
 			drawBars(inOrder(root, maxLevel), () => "good") + legend(H - 26, [[C.good, "sorted"]]),
 		),
 		hold: 10,
