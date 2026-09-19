@@ -156,16 +156,6 @@ Two policies keep the signal honest and the suite lean:
   either way. They are documented rather than chased with tests that assert
   internals.
 
-## Publishing
-
-`.github/workflows/publish.yml` publishes to npm with provenance through GitHub
-OIDC trusted publishing on any `v*` tag. No `NPM_TOKEN` is stored; configure the
-trusted publisher for this repository on npm, then:
-
-```sh
-npm version minor && git push --follow-tags
-```
-
 ## License
 
 MIT
