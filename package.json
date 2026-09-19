@@ -1,5 +1,5 @@
 {
-	"name": "jev-algorithms",
+	"name": "@hikae/jev-algorithms",
 	"version": "0.1.0",
 	"description": "Runtime-agnostic algorithms built on TypeSafe's Jev structured-evaluation model.",
 	"keywords": [
@@ -13,6 +13,14 @@
 		"matching"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/HikaruEgashira/jev-algorithms.git"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org"
+	},
 	"type": "module",
 	"sideEffects": false,
 	"engines": {
@@ -26,7 +34,8 @@
 	},
 	"types": "./dist/index.d.ts",
 	"files": [
-		"dist"
+		"dist",
+		"docs/animations/*.gif"
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",

@@ -21,11 +21,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
           registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
-      # Trusted publishing authenticates with the OIDC token above; no
-      # long-lived NPM_TOKEN is stored.
-      - run: pnpm publish --access public --no-git-checks --provenance
+      - run: pnpm typecheck
+      - name: Verify release tag
+        run: node --input-type=module -e 'import assert from "node:assert/strict"; import pkg from "./package.json" with { type:"json" }; assert.equal(process.env.GITHUB_REF_NAME, "v" + pkg.version)'
+      # npm runs prepublishOnly (build + tests) and authenticates through OIDC.
+      # Private repositories cannot generate npm provenance.
+      - run: npm publish --provenance=false

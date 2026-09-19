@@ -2,21 +2,21 @@
 
 ## Gallery
 
-![sortByPairwise](docs/animations/sort-by-pairwise.gif)
-![selectTopK](docs/animations/select-top-k.gif)
-![findFirstTrue](docs/animations/find-first-true.gif)
-![clusterByRelation](docs/animations/cluster-by-relation.gif)
+![sortByPairwise](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/sort-by-pairwise.gif)
+![selectTopK](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/select-top-k.gif)
+![findFirstTrue](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/find-first-true.gif)
+![clusterByRelation](https://cdn.jsdelivr.net/npm/@hikae/jev-algorithms@0.1.0/docs/animations/cluster-by-relation.gif)
 
 ## Install
 
 ```sh
-npm install jev-algorithms
+npm install @hikae/jev-algorithms
 ```
 
 ## Quick start
 
 ```ts
-import { createTypeSafeClient, sortByPairwise } from "jev-algorithms";
+import { createTypeSafeClient, sortByPairwise } from "@hikae/jev-algorithms";
 
 const jev = createTypeSafeClient({ apiKey: process.env.TYPESAFE_API_KEY! });
 
