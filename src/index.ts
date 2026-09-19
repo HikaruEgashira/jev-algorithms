@@ -10,6 +10,7 @@ export * from "./algorithms/aggregate.js";
 export * from "./algorithms/cluster.js";
 export * from "./algorithms/classify.js";
 export * from "./algorithms/match.js";
+export * from "./algorithms/programGraph.js";
 
 export * from "./lib/chunk.js";
 export * from "./lib/unionFind.js";

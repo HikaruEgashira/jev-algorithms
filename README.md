@@ -123,6 +123,98 @@ caps sampling for large inputs.
 Gale-Shapley implementation. `buildPreferences(client, choosers, candidates, options)`
 builds each side's preference order with pairwise comparisons first.
 
+### Call graphs and control flow graphs (Go / JavaScript)
+
+`buildProgramGraphs(client, files, options?)` consumes actual tree-sitter roots.
+It constructs statement-level CFGs from syntax and asks Jev which declared
+functions each explicit call might invoke. The package stays runtime-agnostic:
+install the parser and grammars in the application that owns parsing.
+
+```sh
+npm install tree-sitter tree-sitter-go
+```
+
+```ts
+import Parser from "tree-sitter";
+import Go from "tree-sitter-go";
+import { buildProgramGraphs, createTypeSafeClient } from "@hikae/jev-algorithms";
+
+const parser = new Parser();
+parser.setLanguage(Go);
+const tree = parser.parse(`package main
+func double(n int) int { return n * 2 }
+func run(n int) int {
+  if n <= 0 { return 0 }
+  return double(n)
+}`);
+const graphs = await buildProgramGraphs(
+  createTypeSafeClient({ apiKey: process.env.TYPESAFE_API_KEY! }),
+  [{ path: "main.go", language: "go", rootNode: tree.rootNode }],
+);
+console.log(graphs.callGraph.edges, graphs.controlFlowGraphs);
+```
+
+Pass `tree-sitter-javascript` roots with `language: "javascript"` for JavaScript.
+Multiple files and both languages can share one analysis; candidate edges never
+cross languages. Files are supplied explicitly; imports are not loaded from disk.
+
+1. Index functions, methods, closures, and explicit call sites with file/offset
+   identities. Nested functions own their calls; each file has a module node.
+2. Build each CFG backwards from its exit, threading the next statement and the
+   enclosing loop's break/continue targets. `if`, Go's three `for` forms,
+   JavaScript `for`/`while`/`do`, early return, and explicit JS throw are supported.
+3. Enumerate call/function pairs within each language. Batch independent Noul
+   questions, retaining every probability in `callGraph.candidates` and those at
+   or above `threshold` (default `0.8`) in `callGraph.edges`. Multiple targets are
+   allowed, including interface dispatch. Calls without an accepted target remain
+   in `unresolved`; this also includes calls to external functions.
+
+These call edges are **model hypotheses, not a sound static analysis**. An empty
+`unresolved` list does not prove completeness. Scope, aliases, receivers, imports,
+and dynamic dispatch are assessed by Jev from the supplied source, without a type
+checker, treating each function as a possible entry point with type-compatible
+arguments. Reflection, implicit callbacks, property accessors, runtime registration,
+and dependencies outside the supplied files may be missing. Noul probability is
+belief in a target, not its execution frequency. CFG edges never depend on Jev.
+
+CFGs describe intraprocedural normal flow with atomic expressions, including
+short-circuit and conditional expressions; they do not expand expression-level
+branches, parameter initializers, implicit exceptions/panics, or non-returning
+callees. A Go `go` statement continues in the caller; its call is marked `go`.
+Scheduling and synchronization are not modeled. `defer`, `switch`, `select`,
+`goto`, labeled jumps, JS `try`/`finally`, `for…in/of`, classes at module scope,
+and `await`/`yield` produce a diagnostic and an empty CFG for the affected body.
+Other functions and explicit call sites (including `defer`) remain available.
+Invalid syntax aborts analysis before any request.
+
+For `C` calls, `F` functions, and `B = maxPairsPerRequest` (default/maximum 40),
+candidate evaluation costs at most `C × F` questions and `ceil(C × F / B)`
+requests. Source context is repeated per request. `maxComparisons` (default 2000)
+and `maxSourceChars` (default 60000) reject oversized inputs before any request;
+no sampling or truncation hides lost candidates. Large repositories need symbol
+and type-based candidate filtering before this prototype is suitable. Missing or
+invalid probabilities abort rather than inventing edges.
+
+The supplied source is sent to the configured Jev provider. From this checkout,
+run the Go interface-dispatch example or analyze your own files:
+
+```sh
+pnpm build
+dotenvx run -- node scripts/experiment-program-graphs.mjs
+dotenvx run -- node scripts/experiment-program-graphs.mjs main.go helpers.go
+```
+
+The implementation follows the official [tree-sitter node API](https://github.com/tree-sitter/node-tree-sitter),
+[Go grammar](https://github.com/tree-sitter/tree-sitter-go),
+[JavaScript grammar](https://github.com/tree-sitter/tree-sitter-javascript), and
+[TypeSafe Noul contract](https://docs.typesafe.ai/primitives).
+
+Live smoke check (2026-09-19, `jev-latest`, the bundled Go example): one request
+evaluated eight pairs in 1274 ms. `Example -> Checkout` scored `0.93`; the two
+interface targets scored `0.66` and `0.62`, so both stayed below the default
+threshold and the call remained unresolved. This verifies API integration and
+abstention, not analysis accuracy; calibrate thresholds on labeled examples.
+
 ## Design notes
 
 - **Batch by default.** Every algorithm packs up to 40 questions into one
@@ -145,17 +237,17 @@ npm run mutation # build + Stryker
 
 Tests are judged by mutation coverage, not line coverage: a test only earns its
 place if it kills a mutant. Stryker runs with the `command` test runner against
-the built `dist` and a break threshold of 80; the current score is ~85%.
+the built `dist` and a break threshold of 80; the latest full local run scored 87.76%.
 
 Two policies keep the signal honest and the suite lean:
 
 - `StringLiteral` mutants are excluded. Prompts and error wording are content,
   not logic; asserting exact prompt text would make the suite brittle without
   catching real bugs.
-- Remaining survivors are equivalent mutants — union-by-size size bookkeeping,
-  path compression, and randomized pivot selection that produces the same order
-  either way. They are documented rather than chased with tests that assert
-  internals.
+- Survivors include equivalent mutations in union-find and pivot selection, as
+  well as coverage gaps in diagnostics and less common syntax paths. Inspect
+  `reports/mutation.json`; a passing threshold does not mean every survivor is
+  equivalent or that Jev's predictions are accurate.
 
 ## License
 
