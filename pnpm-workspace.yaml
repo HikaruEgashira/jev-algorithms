@@ -3,7 +3,3 @@
 # Dependabot security update has somewhere to go.
 overrides:
   qs: ^6.16.0
-allowBuilds:
-  tree-sitter: true
-  tree-sitter-go: true
-  tree-sitter-javascript: true
