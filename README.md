@@ -157,6 +157,18 @@ Two policies keep the signal honest and the suite lean:
   `reports/mutation.json`; a passing threshold does not mean every survivor is
   equivalent or that Jev's predictions are accurate.
 
+## Releasing
+
+Pushing a `v*` tag runs `.github/workflows/publish.yml` on a GitHub-hosted
+runner, which npm requires for
+[trusted publishing](https://docs.npmjs.com/trusted-publishers/). The workflow
+checks that the tag matches `package.json`, refuses a version that is already on
+the registry, and publishes through OIDC without an npm token.
+
+Configure the trusted publisher once on npmjs.com under the package settings:
+GitHub Actions, repository `HikaruEgashira/jev-algorithms`, workflow
+`publish.yml`. Then bump `version`, merge, and push the matching tag.
+
 ## License
 
 MIT

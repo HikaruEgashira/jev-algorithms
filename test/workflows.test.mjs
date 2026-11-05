@@ -39,3 +39,19 @@ test("workflows use Node.js 24 action releases", () => {
 		);
 	}
 });
+
+test("publish workflow uses npm trusted publishing on a GitHub-hosted runner", () => {
+	const source = readFileSync(join(workflowsDir, "publish.yml"), "utf8");
+	const runners = [...source.matchAll(/^\s*runs-on:\s*(\S+)/gm)].map((m) => m[1]);
+	assert.ok(runners.length > 0, "publish.yml declares no runner");
+	for (const runner of runners) {
+		assert.match(
+			runner,
+			/^ubuntu-(?:latest|\d{2}\.\d{2})$/,
+			`publish.yml runs on ${runner}; npm trusted publishing requires a GitHub-hosted runner`,
+		);
+	}
+	assert.match(source, /id-token:\s*write/);
+	assert.match(source, /GITHUB_REF_NAME, "v" \+ pkg\.version/);
+	assert.doesNotMatch(source, /NODE_AUTH_TOKEN|NPM_TOKEN|secrets\./);
+});

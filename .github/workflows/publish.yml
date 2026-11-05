@@ -10,7 +10,9 @@ permissions:
 
 jobs:
   publish:
-    runs-on: hikae-2vcpu-ubuntu-2404-arm
+    # npm trusted publishing only supports GitHub-hosted runners:
+    # https://docs.npmjs.com/trusted-publishers/
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -23,10 +25,23 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
       - name: Verify release tag
         run: node --input-type=module -e 'import assert from "node:assert/strict"; import pkg from "./package.json" with { type:"json" }; assert.equal(process.env.GITHUB_REF_NAME, "v" + pkg.version)'
-      # npm runs prepublishOnly (build + tests) and authenticates through OIDC.
+      - name: Verify npm supports trusted publishing
+        # OIDC publishing requires npm 11.5.1 or newer.
+        run: node --input-type=module -e 'import assert from "node:assert/strict"; import { execFileSync } from "node:child_process"; const [major, minor, patch] = execFileSync("npm", ["--version"], { encoding: "utf8" }).trim().split(".").map(Number); assert.ok(major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1))), "npm 11.5.1+ is required for trusted publishing")'
+      - name: Verify version is unpublished
+        run: |
+          name=$(node -p 'require("./package.json").name')
+          version=$(node -p 'require("./package.json").version')
+          if npm view "$name@$version" version --registry https://registry.npmjs.org 2>/dev/null | grep -q .; then
+            echo "::error::$name@$version is already published"
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      # npm runs prepublishOnly (build + tests) and authenticates through OIDC
+      # against the trusted publisher configured on npmjs.com; no token is used.
       # Private repositories cannot generate npm provenance.
       - run: npm publish --provenance=false
