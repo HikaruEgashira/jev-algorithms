@@ -26,10 +26,12 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Verify release tag
-        run: node --input-type=module -e 'import assert from "node:assert/strict"; import pkg from "./package.json" with { type:"json" }; assert.equal(process.env.GITHUB_REF_NAME, "v" + pkg.version)'
+        run: |
+          node --input-type=module -e 'import assert from "node:assert/strict"; import pkg from "./package.json" with { type:"json" }; assert.equal(process.env.GITHUB_REF_NAME, "v" + pkg.version)'
       - name: Verify npm supports trusted publishing
         # OIDC publishing requires npm 11.5.1 or newer.
-        run: node --input-type=module -e 'import assert from "node:assert/strict"; import { execFileSync } from "node:child_process"; const [major, minor, patch] = execFileSync("npm", ["--version"], { encoding: "utf8" }).trim().split(".").map(Number); assert.ok(major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1))), "npm 11.5.1+ is required for trusted publishing")'
+        run: |
+          node --input-type=module -e 'import assert from "node:assert/strict"; import { execFileSync } from "node:child_process"; const [major, minor, patch] = execFileSync("npm", ["--version"], { encoding: "utf8" }).trim().split(".").map(Number); assert.ok(major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1))), "npm 11.5.1+ is required for trusted publishing")'
       - name: Verify version is unpublished
         run: |
           name=$(node -p 'require("./package.json").name')

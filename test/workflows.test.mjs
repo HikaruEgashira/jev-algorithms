@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { parseDocument } from "yaml";
 
 const workflowsDir = new URL("../.github/workflows/", import.meta.url).pathname;
 
@@ -14,10 +15,26 @@ const node24Actions = new Map([
 	["pnpm/action-setup", 5],
 ]);
 
+function workflowFiles() {
+	return readdirSync(workflowsDir).filter((file) => file.endsWith(".yml") || file.endsWith(".yaml"));
+}
+
+test("workflow files are valid YAML", () => {
+	const files = workflowFiles();
+	assert.ok(files.length > 0, "no workflow files found");
+	for (const file of files) {
+		const document = parseDocument(readFileSync(join(workflowsDir, file), "utf8"));
+		assert.deepEqual(
+			document.errors.map((error) => error.message),
+			[],
+			`${file} has YAML syntax errors`,
+		);
+	}
+});
+
 function actionReferences() {
 	const references = [];
-	for (const file of readdirSync(workflowsDir)) {
-		if (!file.endsWith(".yml") && !file.endsWith(".yaml")) continue;
+	for (const file of workflowFiles()) {
 		const source = readFileSync(join(workflowsDir, file), "utf8");
 		for (const line of source.split("\n")) {
 			const match = line.match(/^\s*(?:-\s*)?uses:\s*([^\s#]+)/);
