@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { parseDocument } from "yaml";
 
 const workflowsDir = new URL("../.github/workflows/", import.meta.url).pathname;
 
@@ -54,4 +55,17 @@ test("publish workflow uses npm trusted publishing on a GitHub-hosted runner", (
 	assert.match(source, /id-token:\s*write/);
 	assert.match(source, /GITHUB_REF_NAME, "v" \+ pkg\.version/);
 	assert.doesNotMatch(source, /NODE_AUTH_TOKEN|NPM_TOKEN|secrets\./);
+});
+
+test("workflow files are valid YAML", () => {
+	const files = readdirSync(workflowsDir).filter((file) => file.endsWith(".yml") || file.endsWith(".yaml"));
+	assert.ok(files.length > 0, "no workflow files found");
+	for (const file of files) {
+		const document = parseDocument(readFileSync(join(workflowsDir, file), "utf8"));
+		assert.deepEqual(
+			document.errors.map((error) => error.message),
+			[],
+			`${file} is not valid YAML`,
+		);
+	}
 });
